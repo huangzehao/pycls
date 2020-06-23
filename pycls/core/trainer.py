@@ -22,6 +22,8 @@ import pycls.core.optimizer as optim
 import pycls.datasets.loader as loader
 import torch
 from pycls.core.config import cfg
+from pycls.core.timer import Timer
+from apex import amp
 
 
 logger = logging.get_logger(__name__)
@@ -58,6 +60,11 @@ def setup_model():
     assert cfg.NUM_GPUS <= torch.cuda.device_count(), err_str
     cur_device = torch.cuda.current_device()
     model = model.cuda(device=cur_device)
+    # Optimizer
+    optimizer = optim.construct_optimizer(model)
+    # AMP
+    model, optimizer = amp.initialize(model, optimizer, opt_level="O2")
+
     # Use multi-process data parallel model in the multi-gpu setting
     if cfg.NUM_GPUS > 1:
         # Make model replica operate on the current device
@@ -66,7 +73,7 @@ def setup_model():
         )
         # Set complexity function to be module's complexity function
         model.complexity = model.module.complexity
-    return model
+    return model, optimizer
 
 
 def train_epoch(train_loader, model, loss_fun, optimizer, train_meter, cur_epoch):
@@ -88,7 +95,8 @@ def train_epoch(train_loader, model, loss_fun, optimizer, train_meter, cur_epoch
         loss = loss_fun(preds, labels)
         # Perform the backward pass
         optimizer.zero_grad()
-        loss.backward()
+        with amp.scale_loss(loss, optimizer) as scaled_loss:
+            scaled_loss.backward()
         # Update the parameters
         optimizer.step()
         # Compute the errors
@@ -140,9 +148,8 @@ def train_model():
     # Setup training/testing environment
     setup_env()
     # Construct the model, loss_fun, and optimizer
-    model = setup_model()
+    model, optimizer = setup_model()
     loss_fun = builders.build_loss_fun().cuda()
-    optimizer = optim.construct_optimizer(model)
     # Load checkpoint or initial weights
     start_epoch = 0
     if cfg.TRAIN.AUTO_RESUME and checkpoint.has_checkpoint():
