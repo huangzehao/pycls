@@ -13,13 +13,15 @@ from pycls.models.anynet import AnyNet
 from pycls.models.effnet import EffNet
 from pycls.models.regnet import RegNet
 from pycls.models.resnet import ResNet
+from pycls.models.loss import LabelSmooth
 
 
 # Supported models
 _models = {"anynet": AnyNet, "effnet": EffNet, "resnet": ResNet, "regnet": RegNet}
 
 # Supported loss functions
-_loss_funs = {"cross_entropy": torch.nn.CrossEntropyLoss}
+_loss_funs = {"cross_entropy": torch.nn.CrossEntropyLoss,
+              "cross_entropy_labelsmooth": LabelSmooth}
 
 
 def get_model():
@@ -43,7 +45,11 @@ def build_model():
 
 def build_loss_fun():
     """Build the loss function."""
-    return get_loss_fun()()
+    loss = get_loss_fun()
+    if cfg.MODEL.LOSS_FUN == "cross_entropy_labelsmooth":
+        return loss(cfg.MODEL.NUM_CLASSES, cfg.MODEL.SMOOTH_ETA)
+    else:
+        return loss()
 
 
 def register_model(name, ctor):

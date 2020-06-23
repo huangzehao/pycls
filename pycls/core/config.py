@@ -40,6 +40,8 @@ _C.MODEL.NUM_CLASSES = 10
 # Loss function (see pycls/models/loss.py for options)
 _C.MODEL.LOSS_FUN = "cross_entropy"
 
+_C.MODEL.SMOOTH_ETA = 0.1
+
 
 # ------------------------------------------------------------------------------------ #
 # ResNet options
@@ -258,7 +260,7 @@ _C.TRAIN.EVAL_PERIOD = 1
 _C.TRAIN.CHECKPOINT_PERIOD = 1
 
 # Resume training from the latest checkpoint in the output directory
-_C.TRAIN.AUTO_RESUME = True
+_C.TRAIN.AUTO_RESUME = False
 
 # Weights to start training from
 _C.TRAIN.WEIGHTS = ""
@@ -345,7 +347,7 @@ _C.CFG_DEST = "config.yaml"
 _C.RNG_SEED = 1
 
 # Log destination ('stdout' or 'file')
-_C.LOG_DEST = "stdout"
+_C.LOG_DEST = "file"
 
 # Log period in iters
 _C.LOG_PERIOD = 10
