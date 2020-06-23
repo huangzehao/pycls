@@ -90,6 +90,7 @@ class TrainMeter(object):
         self.loss = ScalarMeter(cfg.LOG_PERIOD)
         self.loss_total = 0.0
         self.lr = None
+        self.mb_size = None
         # Current minibatch errors (smoothed over a window)
         self.mb_top1_err = ScalarMeter(cfg.LOG_PERIOD)
         self.mb_top5_err = ScalarMeter(cfg.LOG_PERIOD)
@@ -117,6 +118,7 @@ class TrainMeter(object):
         self.iter_timer.toc()
 
     def update_stats(self, top1_err, top5_err, loss, lr, mb_size):
+        self.mb_size = mb_size
         # Current minibatch stats
         self.mb_top1_err.add_value(top1_err)
         self.mb_top5_err.add_value(top5_err)
@@ -137,6 +139,7 @@ class TrainMeter(object):
             "iter": "{}/{}".format(cur_iter + 1, self.epoch_iters),
             "time_avg": self.iter_timer.average_time,
             "time_diff": self.iter_timer.diff,
+            "speed": "{:.2f}samples/sec".format(self.mb_size / self.iter_timer.diff),
             "eta": time_string(eta_sec),
             "top1_err": self.mb_top1_err.get_win_median(),
             "top5_err": self.mb_top5_err.get_win_median(),
@@ -146,10 +149,12 @@ class TrainMeter(object):
         }
         return stats
 
-    def log_iter_stats(self, cur_epoch, cur_iter):
+    def log_iter_stats(self, cur_epoch, cur_iter, extra_stats=None):
         if (cur_iter + 1) % cfg.LOG_PERIOD != 0:
             return
         stats = self.get_iter_stats(cur_epoch, cur_iter)
+        if extra_stats:
+            stats.update(extra_stats)
         logger.info(logging.dump_log_data(stats, "train_iter"))
 
     def get_epoch_stats(self, cur_epoch):
